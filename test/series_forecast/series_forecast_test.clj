@@ -1,7 +1,8 @@
 (ns series-forecast.series-forecast-test
-  (:require [clojure.test :refer :all]
-            [series-forecast.series-forecast :refer :all]))
+  (:require [clojure.test :refer [deftest is testing]]
+            [series-forecast.series-forecast :refer [greet]]))
 
-(deftest a-test
-  (testing "FIXME, I fail."
-    (is (= 0 1))))
+(deftest greet-test
+  (testing "prints a greeting"
+    (is (= "Hello, Clojure!\n"
+           (with-out-str (greet {:name "Clojure"}))))))
