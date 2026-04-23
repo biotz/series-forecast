@@ -1,5 +1,8 @@
 {:paths ["src" "resources"]
  :deps {org.clojure/clojure {:mvn/version "1.11.1"}
+        io.github.biotz/clojure-ml
+        {:git/url "git@github.com:biotz/clojure-ml.git"
+         :git/sha "8f9b93bde5a107dd58aa3b3373460de593953380"}
         com.github.seancorfield/honeysql {:mvn/version "2.7.1368"}
         org.duckdb/duckdb_jdbc {:mvn/version "1.5.2.0"}
         com.github.haifengl/smile-core {:mvn/version "5.2.3"}
@@ -16,7 +19,7 @@
          :extra-deps {org.clojure/test.check {:mvn/version "1.1.1"}
                       io.github.cognitect-labs/test-runner
                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}}}
-  :neil {:project {:name series-forecast/series-forecast}}
+  :neil {:project {:name series-forecast}}
   :nrepl {:extra-deps {nrepl/nrepl {:mvn/version "1.7.0"}
                        cider/cider-nrepl {:mvn/version "0.59.0"}
                        refactor-nrepl/refactor-nrepl {:mvn/version "3.11.0"}}

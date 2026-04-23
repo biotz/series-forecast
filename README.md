@@ -1,4 +1,4 @@
-# series-forecast/series-forecast
+# series-forecast
 
 FIXME: my new application.
 
