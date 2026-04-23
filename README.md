@@ -4,7 +4,7 @@ FIXME: my new application.
 
 ## Installation
 
-Download from https://github.com/series-forecast/series-forecast
+Download from https://github.com/biotz/series-forecast
 
 ## Usage
 
