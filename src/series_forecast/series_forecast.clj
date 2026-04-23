@@ -56,10 +56,7 @@
    :select :*
    :from [[[:raw (format  "read_csv([%s] , union_by_name = true)" (str/join ", " (map #(format "'%s'" %) files)))]]]})
 
-  ; "CREATE TABLE all_rows AS SELECT * FROM read_csv('path/to/files/*.csv', union_by_name = true); "
-  ; )
-
-(sql/format (create-contantenated-records joined-datasets "new"))
+; (sql/format (create-contantenated-records joined-datasets "new"))
 
 (defn fill-nil [filename]
   {:select [:date
@@ -69,7 +66,26 @@
    :order-by [:date]})
 
 (def  train-data (delay (jdbc/execute! @conn (sql/format (make-query (nth datasets 3))))))
-@train-data
+
+(defn lag-features [num] (format "LAG(sales, %s) OVER ( PARTITION BY store_nbr, family ORDER BY date) AS lag_%s" num num))
+
+(defn rolling-features [start end] (format "AVG(sales) OVER (PARTITION BY store_nbr, family ORDER BY date ROWS BETWEEN %s PRECEDING AND %s PRECEDING) AS rolling_mean_7" start end))
+
+(defn create-vocabulary [table column]
+  (format
+   "CREATE OR REPLACE TABLE %s_vocab AS
+    SELECT %s,
+           ROW_NUMBER() OVER (ORDER BY %s) - 1 AS %s_idx
+    FROM (
+      SELECT DISTINCT %s
+      FROM %s
+    ) t;"
+   column
+   column
+   column
+   column
+   column
+   table))
 
 (defn -main
   "I don't do a whole lot ... yet."
