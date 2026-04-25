@@ -67,26 +67,74 @@
 
 (def  train-data (delay (jdbc/execute! @conn (sql/format (make-query (nth datasets 3))))))
 
-(defn lag-features [num] (format "LAG(sales, %s) OVER ( PARTITION BY store_nbr, family ORDER BY date) AS lag_%s" num num))
+(defn lag-features [num]
+  [[[:over
+     [:lag :sales num]
+     {:partition-by [:store_nbr :family]
+      :order-by [:date]}]
+    (keyword (str "lag_" num))]])
 
-(defn rolling-features [start end] (format "AVG(sales) OVER (PARTITION BY store_nbr, family ORDER BY date ROWS BETWEEN %s PRECEDING AND %s PRECEDING) AS rolling_mean_7" start end))
+(defn rolling-features [start end]
+  [[[:over
+     [:avg :sales]
+     {:partition-by [:store_nbr :family]
+      :order-by [:date]
+      :rows [:between
+             [:preceding start]
+             [:preceding end]]}]
+    :rolling_mean_7]])
 
-(defn create-vocabulary [table column]
-  (format
-   "CREATE OR REPLACE TABLE %s_vocab AS
-    SELECT %s,
-           ROW_NUMBER() OVER (ORDER BY %s) - 1 AS %s_idx
-    FROM (
-      SELECT DISTINCT %s
-      FROM %s
-    ) t;"
-   column
-   column
-   column
-   column
-   column
-   table))
+(defn vocab-table-name [column]
+  (keyword (str (name column) "_vocab")))
 
+(defn vocab-idx-name [column]
+  (keyword (str (name column) "_idx")))
+
+(defn drop-vocabulary [column]
+  (sql/format
+   {:drop-table [:if-exists (vocab-table-name column)]}))
+
+(defn csv-table [path]
+  [:raw (format "read_csv_auto('%s')" path)])
+
+(defn create-vocabulary-map [csv-path column]
+  (let [col (keyword column)]
+    {:create-table-as (vocab-table-name col)
+
+     :with [[:vocab_src
+             {:select-distinct [col]
+              :from [[(csv-table csv-path)]]}]
+
+            [:numbered
+             {:select [col
+                       [[:over
+                         [[:row_number]
+                          {:order-by [[col :asc]]}
+                          :rn]]]]
+              :from [:vocab_src]}]]
+
+     :select [col
+              [[:- :rn 1] (vocab-idx-name col)]]
+
+     :from [:numbered]}))
+
+(defn drop-vocabulary-map [column]
+  {:drop-table [:if-exists (vocab-table-name (keyword column))]})
+
+(defn vocabulary-select-map [column]
+  (let [col (keyword column)]
+    {:select [:*]
+     :from [(vocab-table-name col)]
+     :order-by [(vocab-idx-name col)]}))
+
+(defn recreate-vocabulary! [conn csv-path column]
+  (jdbc/execute! conn (sql/format (drop-vocabulary-map column)))
+  (jdbc/execute! conn (sql/format (create-vocabulary-map csv-path column)))
+  (jdbc/execute! conn (sql/format (vocabulary-select-map column))))
+
+(def vocabulary (recreate-vocabulary! @conn  "/home/heefoo/Documents/code/series-forecast/train.csv" "family"))
+
+; (count vocabulary)
 (defn -main
   "I don't do a whole lot ... yet."
   [& _]
