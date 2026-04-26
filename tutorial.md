@@ -86,6 +86,40 @@ Example:
 
 If you want multi-step forecasting, start with a one-step model first. It is easier to debug.
 
+## 4.1 Embeddings are inside the features, not a replacement for time
+
+If you want learned vector embeddings for features, that usually changes how a
+single row is represented. It does not remove the need for a time window.
+
+Think of the model input in two parts:
+
+1. feature embedding: how one day or one row becomes a dense vector
+2. sequence window: how many past days the recurrent model sees
+
+For example, if you have 33 raw features, you might map them to a 33-dim
+embedding vector per timestep. Then each timestep becomes one vector, and the
+GRU reads a stack of those timestep vectors over time.
+
+That means the shape is still sequence-shaped:
+
+- one sample: `window_size x embedding_dim`
+- one batch with `batch-first? true`: `batch x window_size x embedding_dim`
+
+The embedding layer changes `feature_count` into `embedding_dim`. It does not
+replace the window.
+
+If you only have one row of features and no time history, a GRU or LSTM is
+usually the wrong model. In that case, use a feed-forward model instead.
+
+The `33x33` idea is useful only if you have a specific meaning for that matrix.
+Common meanings are:
+
+- a 33-row repeated feature matrix
+- pairwise feature interactions
+- an embedding table lookup per categorical feature
+
+That is a separate design choice from the recurrent time window.
+
 ## 5. Convert rows into sequences
 
 This is the main modeling step.
@@ -141,6 +175,16 @@ Your first model can be very small:
 - a linear projection to the output
 
 Do not start with a deep stack. Get one model working end to end first.
+
+For this dataset, a reasonable first pass is:
+
+1. build a per-day feature vector
+2. optionally embed categorical features into dense vectors
+3. stack the last `window_size` days into one sequence
+4. feed that sequence into GRU with `:batch-first? true`
+
+In other words, the window is the temporal context. The embeddings are the
+per-step representation inside that context.
 
 ## 8. Sketch the model spec
 
@@ -233,4 +277,3 @@ That is normal. The first job is to prove that:
 - the evaluation is stable
 
 Once that works, you can compare GRU against LSTM and decide whether the extra complexity is worth it.
-
